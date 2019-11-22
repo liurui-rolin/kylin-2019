@@ -23,6 +23,12 @@ import org.apache.commons.lang.StringUtils;
  */
 public final class SparkEntry {
 
+    /**
+     * 提交spark任务的方法
+     * 此处直接main方法反射类，构建服务
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         System.out.println("SparkEntry args:" + StringUtils.join(args, " "));
         if (!(args.length >= 2)) {
@@ -32,6 +38,7 @@ public final class SparkEntry {
             throw new IllegalArgumentException(String.valueOf("-className is required"));
         }
         final String className = args[1];
+        //********** 反射对象 **********//
         final Object o = Class.<AbstractApplication> forName(className).newInstance();
         if (!(o instanceof AbstractApplication)) {
             throw new IllegalArgumentException(String.valueOf(className + " is not a subClass of AbstractApplication"));
@@ -40,6 +47,8 @@ public final class SparkEntry {
         for (int i = 2; i < args.length; i++) {
             appArgs[i - 2] = args[i];
         }
+
+        //********** 强转 & 执行 SparkCubingByLayer是AbstractApplication的实现类 **********//
         AbstractApplication abstractApplication = (AbstractApplication) o;
         abstractApplication.execute(appArgs);
     }

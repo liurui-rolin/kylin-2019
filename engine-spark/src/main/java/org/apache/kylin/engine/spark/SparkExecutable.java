@@ -47,6 +47,11 @@ public class SparkExecutable extends AbstractExecutable {
         this.setParam(JARS, jars);
     }
 
+    /**
+     * 此方法会把执行的类拼接上 -className
+     * 类：sparkExecutable.setClassName(SparkCubingByLayer.class.getName());
+     * @return
+     */
     private String formatArgs() {
         StringBuilder stringBuilder = new StringBuilder();
         for (Map.Entry<String, String> entry : getParams().entrySet()) {
@@ -68,6 +73,12 @@ public class SparkExecutable extends AbstractExecutable {
         }
     }
 
+    /**
+     * 调度任务最终通过此方法创建子进程进行cube构建
+     * @param context
+     * @return
+     * @throws ExecuteException
+     */
     @Override
     protected ExecuteResult doWork(ExecutableContext context) throws ExecuteException {
         final KylinConfig config = context.getConfig();
@@ -108,6 +119,7 @@ public class SparkExecutable extends AbstractExecutable {
         }
 
         StringBuilder stringBuilder = new StringBuilder();
+        //********** 此处提交spark构建任务，执行类org.apache.kylin.common.util.SparkEntry **********//
         stringBuilder.append("export HADOOP_CONF_DIR=%s && %s/bin/spark-submit --class org.apache.kylin.common.util.SparkEntry ");
 
         Map<String, String> sparkConfs = config.getSparkConfigOverride();
@@ -121,6 +133,7 @@ public class SparkExecutable extends AbstractExecutable {
             logger.info("cmd: " + cmd);
             CliCommandExecutor exec = new CliCommandExecutor();
             PatternedLogger patternedLogger = new PatternedLogger(logger);
+            //********** 提交linux命令 **********//
             exec.execute(cmd, patternedLogger);
             getManager().addJobInfo(getId(), patternedLogger.getInfo());
             return new ExecuteResult(ExecuteResult.State.SUCCEED, patternedLogger.getBufferedLog());

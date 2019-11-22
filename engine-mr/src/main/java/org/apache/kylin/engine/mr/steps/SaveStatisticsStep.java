@@ -84,6 +84,12 @@ public class SaveStatisticsStep extends AbstractExecutable {
         }
     }
 
+    /**
+     * 判断使用层级构建还是内存构建
+     * @param seg
+     * @param kylinConf
+     * @throws IOException
+     */
     private void decideCubingAlgorithm(CubeSegment seg, KylinConfig kylinConf) throws IOException {
         String algPref = kylinConf.getCubeAlgorithm();
         AlgorithmEnum alg;

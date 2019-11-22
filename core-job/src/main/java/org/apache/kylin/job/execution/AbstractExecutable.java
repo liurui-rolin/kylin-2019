@@ -104,6 +104,12 @@ public abstract class AbstractExecutable implements Executable, Idempotent {
         }
     }
 
+    /**
+     * 核心方法：执行
+     * @param executableContext
+     * @return
+     * @throws ExecuteException
+     */
     @Override
     public final ExecuteResult execute(ExecutableContext executableContext) throws ExecuteException {
 
@@ -121,6 +127,7 @@ public abstract class AbstractExecutable implements Executable, Idempotent {
                 exception = null;
                 result = null;
                 try {
+                    //********** 此处调用都是具体实现类的doWork方法 **********//
                     result = doWork(executableContext);
                 } catch (Throwable e) {
                     logger.error("error running Executable: " + this.toString());

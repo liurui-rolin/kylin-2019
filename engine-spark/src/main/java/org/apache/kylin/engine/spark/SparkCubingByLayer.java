@@ -133,6 +133,12 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
 
     }
 
+    /**
+     * 核心执行方法:构建
+     * cmd里面执行：abstractApplication.execute(appArgs);
+     * @param optionsHelper
+     * @throws Exception
+     */
     @Override
     protected void execute(OptionsHelper optionsHelper) throws Exception {
         final String hiveTable = optionsHelper.getOptionValue(OPTION_INPUT_TABLE);
@@ -238,6 +244,7 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
         }
 
         final MeasureAggregators measureAggregators = new MeasureAggregators(cubeDesc.getMeasures());
+        //********** 构建cubeid的函数 **********//
         final BaseCuboidReducerFunction2 baseCuboidReducerFunction = new BaseCuboidReducerFunction2(measureNum, vCubeDesc.getValue(), measureAggregators);
         BaseCuboidReducerFunction2 reducerFunction2 = baseCuboidReducerFunction;
         if (allNormalMeasure == false) {
@@ -250,6 +257,7 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
         int partition = estimateRDDPartitionNum(level, cubeStatsReader, kylinConfig);
 
         // aggregate to calculate base cuboid
+        //********** 构建基础的cubeid **********//
         allRDDs[0] = encodedBaseRDD.reduceByKey(baseCuboidReducerFunction, partition).persist(storageLevel);
         Configuration confOverwrite = new Configuration(sc.hadoopConfiguration());
         confOverwrite.set("dfs.replication", "2"); // cuboid intermediate files, replication=2
@@ -259,9 +267,11 @@ public class SparkCubingByLayer extends AbstractApplication implements Serializa
         // aggregate to ND cuboids
         PairFlatMapFunction<Tuple2<ByteArray, Object[]>, ByteArray, Object[]> flatMapFunction = new CuboidFlatMap(vCubeSegment.getValue(), vCubeDesc.getValue(), vCuboidScheduler.getValue(), ndCuboidBuilder);
 
+        //********** 构建分层的cubeid，此处循环的次数等于立方体的深度 **********//
         for (level = 1; level <= totalLevels; level++) {
             partition = estimateRDDPartitionNum(level, cubeStatsReader, kylinConfig);
             logger.info("Level " + level + " partition number: " + partition);
+            //********** 层级构建，每一次都是基于上一次的构建结果进行构建 **********//
             allRDDs[level] = allRDDs[level - 1].flatMapToPair(flatMapFunction).reduceByKey(reducerFunction2, partition).persist(storageLevel);
             if (kylinConfig.isSparkSanityCheckEnabled() == true) {
                 sanityCheck(allRDDs[level], totalCount, level, cubeStatsReader, countMeasureIndex);

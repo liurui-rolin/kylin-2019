@@ -190,6 +190,22 @@ public class JobService extends BasicService implements InitializingBean {
         }
     }
 
+    /**
+     * 提交构建任务
+     * @param cube
+     * @param startDate
+     * @param endDate
+     * @param startOffset
+     * @param endOffset
+     * @param sourcePartitionOffsetStart
+     * @param sourcePartitionOffsetEnd
+     * @param buildType
+     * @param force
+     * @param submitter
+     * @return
+     * @throws IOException
+     * @throws JobException
+     */
     @PreAuthorize(Constant.ACCESS_HAS_ROLE_ADMIN + " or hasPermission(#cube, 'ADMINISTRATION') or hasPermission(#cube, 'OPERATION') or hasPermission(#cube, 'MANAGEMENT')")
     public JobInstance submitJob(CubeInstance cube, long startDate, long endDate, long startOffset, long endOffset, //
             Map<Integer, Long> sourcePartitionOffsetStart, Map<Integer, Long> sourcePartitionOffsetEnd, CubeBuildTypeEnum buildType, boolean force, String submitter) throws IOException, JobException {
@@ -203,22 +219,24 @@ public class JobService extends BasicService implements InitializingBean {
 
         CubeSegment newSeg = null;
         try {
-            if (buildType == CubeBuildTypeEnum.BUILD) {
+            if (buildType == CubeBuildTypeEnum.BUILD) { //********** 新建cube **********//
                 ISource source = SourceFactory.tableSource(cube);
                 SourcePartition sourcePartition = new SourcePartition(startDate, endDate, startOffset, endOffset, sourcePartitionOffsetStart, sourcePartitionOffsetEnd);
                 sourcePartition = source.parsePartitionBeforeBuild(cube, sourcePartition);
                 newSeg = getCubeManager().appendSegment(cube, sourcePartition);
+                //********** 此处创建构建任务 **********//
                 job = EngineFactory.createBatchCubingJob(newSeg, submitter);
-            } else if (buildType == CubeBuildTypeEnum.MERGE) {
+            } else if (buildType == CubeBuildTypeEnum.MERGE) { //********** 合并cube **********//
                 newSeg = getCubeManager().mergeSegments(cube, startDate, endDate, startOffset, endOffset, force);
                 job = EngineFactory.createBatchMergeJob(newSeg, submitter);
-            } else if (buildType == CubeBuildTypeEnum.REFRESH) {
+            } else if (buildType == CubeBuildTypeEnum.REFRESH) { //********** 刷新cube **********//
                 newSeg = getCubeManager().refreshSegment(cube, startDate, endDate, startOffset, endOffset);
                 job = EngineFactory.createBatchCubingJob(newSeg, submitter);
             } else {
                 throw new JobException("invalid build type:" + buildType);
             }
 
+            //********** 此处提交构建任务给kylin的构建任务调度服务 **********//
             getExecutableManager().addJob(job);
 
         } catch (Exception e) {

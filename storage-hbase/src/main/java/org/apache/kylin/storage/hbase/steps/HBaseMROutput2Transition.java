@@ -54,6 +54,7 @@ public class HBaseMROutput2Transition implements IMROutput2 {
 
             @Override
             public void addStepPhase3_BuildCube(DefaultChainedExecutable jobFlow) {
+                //********** 转换cube成hfile，并加载到hive表的任务  **********//
                 jobFlow.addTask(steps.createConvertCuboidToHfileStep(jobFlow.getId()));
                 jobFlow.addTask(steps.createBulkLoadStep(jobFlow.getId()));
             }

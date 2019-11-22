@@ -40,10 +40,19 @@ public class SparkBatchCubingJobBuilder2 extends BatchCubingJobBuilder2 {
         super(newSegment, submitter);
     }
 
+    /**
+     * 基于spark层级构建
+     * @param result
+     * @param jobId
+     * @param cuboidRootPath
+     */
     @Override
     protected void addLayerCubingSteps(final CubingJob result, final String jobId, final String cuboidRootPath) {
         IJoinedFlatTableDesc flatTableDesc = EngineFactory.getJoinedFlatTableDesc(seg);
+        //********** kylin封装的任务执行类，继承AbstractExecutable，实现Executable接口，核心方法：ExecuteResult execute(ExecutableContext executableContext) throws ExecuteException; **********//
+        //********** 进入此类的父类，查看execute方法 **********//
         final SparkExecutable sparkExecutable = new SparkExecutable();
+        //********** 此处设置class，是真正的构建cube的spark代码，先看SparkExecutable实现之后就明白了 **********//
         sparkExecutable.setClassName(SparkCubingByLayer.class.getName());
         sparkExecutable.setParam(SparkCubingByLayer.OPTION_CUBE_NAME.getOpt(), seg.getRealization().getName());
         sparkExecutable.setParam(SparkCubingByLayer.OPTION_SEGMENT_ID.getOpt(), seg.getUuid());
@@ -66,6 +75,7 @@ public class SparkBatchCubingJobBuilder2 extends BatchCubingJobBuilder2 {
         sparkExecutable.setJars(jars.toString());
 
         sparkExecutable.setName(ExecutableConstants.STEP_NAME_BUILD_SPARK_CUBE);
+        //********** 返回执行任务 **********//
         result.addTask(sparkExecutable);
     }
 

@@ -52,6 +52,7 @@ public class EngineFactory {
     
     /** Build a new cube segment, typically its time range appends to the end of current cube. */
     public static DefaultChainedExecutable createBatchCubingJob(CubeSegment newSegment, String submitter) {
+        //********** 此处先获取cube构建的引擎，目前支持mr和spark，我们此处看spark的SparkBatchCubingEngine2 **********//
         return batchEngine(newSegment).createBatchCubingJob(newSegment, submitter);
     }
 

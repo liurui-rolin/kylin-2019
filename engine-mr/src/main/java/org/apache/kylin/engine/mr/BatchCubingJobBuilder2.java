@@ -46,6 +46,25 @@ public class BatchCubingJobBuilder2 extends JobBuilderSupport {
         this.outputSide = MRUtil.getBatchCubingOutputSide2(seg);
     }
 
+    /**
+     * 此处调用构建方法，是父类的build方法
+     *
+     * 步骤：
+     * #1 Step Name: Create Intermediate Flat Hive Table  生成扁平的hive表，星型模型会做关联处理，此处容易出现全表扫描问题
+     * #2 Step Name: Redistribute Flat Hive Table 重分区
+     * #3 Step Name: Extract Fact Table Distinct Columns  统计维度的基数
+     * #4 Step Name: Build UHC Dictionary 基于HyperLogLog算法构建超高基数维度字典，
+     * #5 Step Name: Build Dimension Dictionary 构建维度字典
+     * #6 Step Name: Save Cuboid Statistics 保存cubeid的统计信息
+     * #7 Step Name: Create HTable 创建hbase 表
+     * #8 Step Name: Build Cube with Spark 构建cube立方体
+     * #9 Step Name: Convert Cuboid Data to HFile 装换成hfile
+     * #10 Step Name: Load HFile to HBase Table 加载hfile到hive表中
+     * #11 Step Name: Update Cube Info 更新meta信息
+     * #12 Step Name: Hive Cleanup 清理中间表
+     *
+     * @return
+     */
     public CubingJob build() {
         logger.info("MR_V2 new job to BUILD segment " + seg);
 
@@ -54,20 +73,26 @@ public class BatchCubingJobBuilder2 extends JobBuilderSupport {
         final String cuboidRootPath = getCuboidRootPath(jobId);
 
         // Phase 1: Create Flat Table & Materialize Hive View in Lookup Tables
+        //**********  **********//
         inputSide.addStepPhase1_CreateFlatTable(result);
 
         // Phase 2: Build Dictionary
+        //********** 构建字典 **********//
         result.addTask(createFactDistinctColumnsStepWithStats(jobId));
         result.addTask(createBuildDictionaryStep(jobId));
         result.addTask(createSaveStatisticsStep(jobId));
         outputSide.addStepPhase2_BuildDictionary(result);
 
         // Phase 3: Build Cube
+        //********** 此处是两种build方法，第一种是层级构建，会启动多伦任务 第二种是基于内存的构建，启动一轮任务，会消耗更多内存 **********//
+        //********** return getOptional("kylin.cube.algorithm", "auto"); **********//
         addLayerCubingSteps(result, jobId, cuboidRootPath); // layer cubing, only selected algorithm will execute
         addInMemCubingSteps(result, jobId, cuboidRootPath); // inmem cubing, only selected algorithm will execute
+        //********** 转换cube成hfile，并加载到hive表的任务  **********//
         outputSide.addStepPhase3_BuildCube(result);
 
         // Phase 4: Update Metadata & Cleanup
+        //********** 第11，12步 **********//
         result.addTask(createUpdateCubeInfoAfterBuildStep(jobId));
         inputSide.addStepPhase4_Cleanup(result);
         outputSide.addStepPhase4_Cleanup(result);

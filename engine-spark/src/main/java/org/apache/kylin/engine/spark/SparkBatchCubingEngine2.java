@@ -27,6 +27,8 @@ import org.apache.kylin.job.execution.DefaultChainedExecutable;
 public class SparkBatchCubingEngine2 extends MRBatchCubingEngine2 {
     @Override
     public DefaultChainedExecutable createBatchCubingJob(CubeSegment newSegment, String submitter) {
+        //********** 创建构建器，调用build方法 **********//
+        //********** 吐槽一下：此处这继承总觉的很奇怪，spark引擎还继承mr，是不是抽象的不好，另外注释太少，方法和类上几乎没有注释 **********//
         return new SparkBatchCubingJobBuilder2(newSegment, submitter).build();
     }
 
