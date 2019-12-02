@@ -93,8 +93,15 @@ public class MapReduceExecutable extends AbstractExecutable {
         }
     }
 
+    /**
+     * 执行mr任务的类
+     * @param context
+     * @return
+     * @throws ExecuteException
+     */
     @Override
     protected ExecuteResult doWork(ExecutableContext context) throws ExecuteException {
+        //拿到要执行mr的类
         final String mapReduceJobClass = getMapReduceJobClass();
         String params = getMapReduceParams();
         Preconditions.checkNotNull(mapReduceJobClass);

@@ -40,16 +40,23 @@ public class CreateFlatHiveTableStep extends AbstractExecutable {
     private static final Logger logger = LoggerFactory.getLogger(CreateFlatHiveTableStep.class);
     private final PatternedLogger stepLogger = new PatternedLogger(logger);
 
+    /**
+     * 构建执行命令
+     * @param config
+     * @throws IOException
+     */
     protected void createFlatHiveTable(KylinConfig config) throws IOException {
         final HiveCmdBuilder hiveCmdBuilder = new HiveCmdBuilder();
         hiveCmdBuilder.overwriteHiveProps(config.getHiveConfigOverride());
         hiveCmdBuilder.addStatement(getInitStatement());
         hiveCmdBuilder.addStatement(getCreateTableStatement());
+        //构建真正的linux执行命令
         final String cmd = hiveCmdBuilder.toString();
 
         stepLogger.log("Create and distribute table, cmd: ");
         stepLogger.log(cmd);
 
+        //提交真正的linux执行命令
         Pair<Integer, String> response = config.getCliCommandExecutor().execute(cmd, stepLogger);
         getManager().addJobInfo(getId(), stepLogger.getInfo());
         if (response.getFirst() != 0) {

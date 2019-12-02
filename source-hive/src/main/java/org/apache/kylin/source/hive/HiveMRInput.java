@@ -141,18 +141,24 @@ public class HiveMRInput implements IMRInput {
             this.hdfsWorkingDir = config.getHdfsWorkingDirectory();
         }
 
+        /**
+         * 创建hive的扁平表和重分区hive表,根据需要
+          * @param jobFlow
+         */
         @Override
         public void addStepPhase1_CreateFlatTable(DefaultChainedExecutable jobFlow) {
             final String cubeName = CubingExecutableUtil.getCubeName(jobFlow.getParams());
             final KylinConfig cubeConfig = CubeManager.getInstance(KylinConfig.getInstanceFromEnv()).getCube(cubeName).getConfig();
             JobEngineConfig conf = new JobEngineConfig(cubeConfig);
 
+            //use db 命令
             final String hiveInitStatements = JoinedFlatTable.generateHiveInitStatements(flatTableDatabase);
             final String jobWorkingDir = getJobWorkingDir(jobFlow);
 
             // create flat table first, then count and redistribute
             jobFlow.addTask(createFlatHiveTableStep(hiveInitStatements, jobWorkingDir, cubeName));
             if (cubeConfig.isHiveRedistributeEnabled() == true) {
+                //重分区
                 jobFlow.addTask(createRedistributeFlatHiveTableStep(hiveInitStatements, cubeName));
             }
             AbstractExecutable task = createLookupHiveViewMaterializationStep(hiveInitStatements, jobWorkingDir);
@@ -165,12 +171,20 @@ public class HiveMRInput implements IMRInput {
             return JobBuilderSupport.getJobWorkingDir(hdfsWorkingDir, jobFlow.getId());
         }
 
+        /**
+         * 重分区步骤
+         * @param hiveInitStatements
+         * @param cubeName
+         * @return
+         */
         private AbstractExecutable createRedistributeFlatHiveTableStep(String hiveInitStatements, String cubeName) {
             RedistributeFlatHiveTableStep step = new RedistributeFlatHiveTableStep();
             step.setInitStatement(hiveInitStatements);
             step.setIntermediateTable(flatDesc.getTableName());
+            //sql.append("INSERT OVERWRITE TABLE " + tableName + " SELECT * FROM " + tableName);
             step.setRedistributeDataStatement(JoinedFlatTable.generateRedistributeFlatTableStatement(flatDesc));
             CubingExecutableUtil.setCubeName(cubeName, step.getParams());
+            //页面显示步骤
             step.setName(ExecutableConstants.STEP_NAME_REDISTRIBUTE_FLAT_HIVE_TABLE);
             return step;
         }
@@ -214,7 +228,15 @@ public class HiveMRInput implements IMRInput {
             return step;
         }
 
+        /**
+         * 创建hive的扁平表
+         * @param hiveInitStatements
+         * @param jobWorkingDir
+         * @param cubeName
+         * @return
+         */
         private AbstractExecutable createFlatHiveTableStep(String hiveInitStatements, String jobWorkingDir, String cubeName) {
+            //清理表sql + 创建表sql + 查询插入表sql
             final String dropTableHql = JoinedFlatTable.generateDropTableStatement(flatDesc);
             final String createTableHql = JoinedFlatTable.generateCreateTableStatement(flatDesc, jobWorkingDir);
             String insertDataHqls = JoinedFlatTable.generateInsertDataStatement(flatDesc);
@@ -223,6 +245,7 @@ public class HiveMRInput implements IMRInput {
             step.setInitStatement(hiveInitStatements);
             step.setCreateTableStatement(dropTableHql + createTableHql + insertDataHqls);
             CubingExecutableUtil.setCubeName(cubeName, step.getParams());
+            //此处的stepname正是页面上的显示名称
             step.setName(ExecutableConstants.STEP_NAME_CREATE_FLAT_HIVE_TABLE);
             return step;
         }
@@ -257,6 +280,12 @@ public class HiveMRInput implements IMRInput {
             return hiveClient.getHiveTableRows(database, table);
         }
 
+        /**
+         * 构建重分区的命令并提交
+         * @param config
+         * @param numReducers
+         * @throws IOException
+         */
         private void redistributeTable(KylinConfig config, int numReducers) throws IOException {
             final HiveCmdBuilder hiveCmdBuilder = new HiveCmdBuilder();
             hiveCmdBuilder.addStatement(getInitStatement());
@@ -268,6 +297,7 @@ public class HiveMRInput implements IMRInput {
             stepLogger.log("Redistribute table, cmd: ");
             stepLogger.log(cmd);
 
+            //提交linux命令
             Pair<Integer, String> response = config.getCliCommandExecutor().execute(cmd, stepLogger);
             getManager().addJobInfo(getId(), stepLogger.getInfo());
 
@@ -283,6 +313,12 @@ public class HiveMRInput implements IMRInput {
             return cube.getConfig();
         }
 
+        /**
+         * 核心方法
+         * @param context
+         * @return
+         * @throws ExecuteException
+         */
         @Override
         protected ExecuteResult doWork(ExecutableContext context) throws ExecuteException {
             KylinConfig config = getCubeSpecificConfig();
@@ -297,9 +333,12 @@ public class HiveMRInput implements IMRInput {
             }
 
             try {
+                //数据表的行数
                 long rowCount = computeRowCount(database, tableName);
                 logger.debug("Row count of table '" + intermediateTable + "' is " + rowCount);
                 if (rowCount == 0) {
+                    //此处如果第一步的表的行数为0的话,会通过参数控制是否执行下面的步骤
+                    //此处在线上发生过几次异常信息的抛出-默认是不允许
                     if (!config.isEmptySegmentAllowed()) {
                         stepLogger.log("Detect upstream hive table is empty, " + "fail the job because \"kylin.job.allow-empty-segment\" = \"false\"");
                         return new ExecuteResult(ExecuteResult.State.ERROR, stepLogger.getBufferedLog());
@@ -308,8 +347,10 @@ public class HiveMRInput implements IMRInput {
                     }
                 }
 
+                //获取参数kylin.engine.mr.mapper-input-rows 控制reducer数量的
                 int mapperInputRows = config.getHadoopJobMapperInputRows();
 
+                //计算reducer数量,决定reduce阶段reducer的个数
                 int numReducers = Math.round(rowCount / ((float) mapperInputRows));
                 numReducers = Math.max(1, numReducers);
                 numReducers = Math.min(numReducers, config.getHadoopJobMaxReducerNumber());

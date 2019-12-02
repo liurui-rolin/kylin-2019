@@ -64,7 +64,9 @@ public class JobBuilderSupport {
 
     private MapReduceExecutable createFactDistinctColumnsStep(String jobId, boolean withStats) {
         MapReduceExecutable result = new MapReduceExecutable();
+        //页面显示步骤:Extract Fact Table Distinct Columns
         result.setName(ExecutableConstants.STEP_NAME_FACT_DISTINCT_COLUMNS);
+        //设置执行类  实时表 要去重的列的计算任务
         result.setMapReduceJobClass(FactDistinctColumnsJob.class);
         StringBuilder cmd = new StringBuilder();
         appendMapReduceParameters(cmd);
@@ -73,6 +75,7 @@ public class JobBuilderSupport {
         appendExecCmdParameters(cmd, BatchConstants.ARG_SEGMENT_ID, seg.getUuid());
         appendExecCmdParameters(cmd, BatchConstants.ARG_STATS_ENABLED, String.valueOf(withStats));
         appendExecCmdParameters(cmd, BatchConstants.ARG_STATS_OUTPUT, getStatisticsPath(jobId));
+        //int percent = Integer.parseInt(this.getOptional("kylin.job.sampling-percentage", "100"));  默认抽样率100%
         appendExecCmdParameters(cmd, BatchConstants.ARG_STATS_SAMPLING_PERCENT, String.valueOf(config.getConfig().getCubingInMemSamplingPercent()));
         appendExecCmdParameters(cmd, BatchConstants.ARG_JOB_NAME, "Kylin_Fact_Distinct_Columns_" + seg.getRealization().getName() + "_Step");
         appendExecCmdParameters(cmd, BatchConstants.ARG_CUBING_JOB_ID, jobId);

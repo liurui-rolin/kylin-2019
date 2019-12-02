@@ -485,6 +485,10 @@ abstract public class KylinConfigBase implements Serializable {
         return getOptional("kylin.source.hive.connection-password", "");
     }
 
+    /**
+     * 此处是hive的参数前缀
+     * @return
+     */
     public Map<String, String> getHiveConfigOverride() {
         return getPropertiesByPrefix("kylin.source.hive.config-override.");
     }
@@ -752,6 +756,10 @@ abstract public class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.engine.mr.max-reducer-number", "500"));
     }
 
+    /**
+     * 控制mapper输入行数的大小的参数获取
+     * @return
+     */
     public int getHadoopJobMapperInputRows() {
         return Integer.parseInt(getOptional("kylin.engine.mr.mapper-input-rows", "1000000"));
     }

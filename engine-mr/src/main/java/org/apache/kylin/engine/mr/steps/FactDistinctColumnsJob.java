@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 对执行去重的列进行统计
  */
 public class FactDistinctColumnsJob extends AbstractHadoopJob {
     protected static final Logger logger = LoggerFactory.getLogger(FactDistinctColumnsJob.class);
@@ -66,6 +67,7 @@ public class FactDistinctColumnsJob extends AbstractHadoopJob {
             options.addOption(OPTION_STATISTICS_SAMPLING_PERCENT);
             parseOptions(options, args);
 
+            //hadoop mapreduce的job对象
             job = Job.getInstance(getConf(), getOptionValue(OPTION_JOB_NAME));
             String job_id = getOptionValue(OPTION_CUBING_JOB_ID);
             job.getConfiguration().set(BatchConstants.ARG_CUBING_JOB_ID, job_id);

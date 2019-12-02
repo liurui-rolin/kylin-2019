@@ -105,7 +105,7 @@ public abstract class AbstractExecutable implements Executable, Idempotent {
     }
 
     /**
-     * 核心方法：执行
+     * 核心方法：执行,此方法在很多子类中没有实现,子类主要实现doWork方法
      * @param executableContext
      * @return
      * @throws ExecuteException
